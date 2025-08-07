@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Dalamud.NET.Sdk/13.0.0">
 
 	<PropertyGroup>
 		<TargetFramework>net9.0-windows</TargetFramework>
@@ -14,12 +14,7 @@
 		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 	</PropertyGroup>
 
-	<PropertyGroup>
-		<DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
-	</PropertyGroup>
-
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="12.0.0" />
 		<PackageReference Include="SharedMemory" Version="2.3.2" />
 	</ItemGroup>
 
@@ -29,18 +24,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Reference Include="Dalamud">
-			<HintPath>$(DalamudLibPath)Dalamud.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="ImGui.NET">
-			<HintPath>$(DalamudLibPath)ImGui.NET.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="ImGuiScene">
-			<HintPath>$(DalamudLibPath)ImGuiScene.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
 		<Reference Include="SharpDX">
 			<HintPath>$(DalamudLibPath)SharpDX.dll</HintPath>
 			<Private>false</Private>

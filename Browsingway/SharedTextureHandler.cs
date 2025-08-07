@@ -1,5 +1,5 @@
 ﻿using Browsingway.Common;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using ImGuiScene;
 using System.Numerics;
 using D3D = SharpDX.Direct3D;
@@ -9,7 +9,8 @@ namespace Browsingway;
 
 internal class SharedTextureHandler : IDisposable
 {
-	private readonly TextureWrap _textureWrap;
+	private readonly D3D11.ShaderResourceView _view;
+ 	private readonly Vector2 _size;
 
 	public SharedTextureHandler(IntPtr handle)
 	{
@@ -19,17 +20,17 @@ internal class SharedTextureHandler : IDisposable
 			throw new Exception("Could not initialize shared texture");
 		}
 
-		D3D11.ShaderResourceView view = new(DxHandler.Device, textureSource, new D3D11.ShaderResourceViewDescription { Format = textureSource.Description.Format, Dimension = D3D.ShaderResourceViewDimension.Texture2D, Texture2D = { MipLevels = textureSource.Description.MipLevels } });
-		_textureWrap = new D3DTextureWrap(view, textureSource.Description.Width, textureSource.Description.Height);
+		_view = new(DxHandler.Device, textureSource, new D3D11.ShaderResourceViewDescription { Format = textureSource.Description.Format, Dimension = D3D.ShaderResourceViewDimension.Texture2D, Texture2D = { MipLevels = textureSource.Description.MipLevels } });
+  		_size = new(textureSource.Description.Width, textureSource.Description.Height);
 	}
 
 	public void Dispose()
 	{
-		_textureWrap.Dispose();
+		_view.Dispose();
 	}
 
 	public void Render()
 	{
-		ImGui.Image(_textureWrap.ImGuiHandle, new Vector2(_textureWrap.Width, _textureWrap.Height));
+		ImGui.Image(new ImTextureID(_view), _size);
 	}
 }

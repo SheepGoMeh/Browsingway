@@ -21,7 +21,7 @@ internal class SharedTextureHandler : IDisposable
 		}
 
 		_view = new(DxHandler.Device, textureSource, new D3D11.ShaderResourceViewDescription { Format = textureSource.Description.Format, Dimension = D3D.ShaderResourceViewDimension.Texture2D, Texture2D = { MipLevels = textureSource.Description.MipLevels } });
-  		_size = new(_textureWrap.Width, _textureWrap.Height);
+  		_size = new(textureSource.Description.Width, textureSource.Description.Height);
 	}
 
 	public void Dispose()

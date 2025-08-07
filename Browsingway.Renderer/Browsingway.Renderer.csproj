@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Dalamud.NET.Sdk/13.0.0">
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
@@ -19,10 +19,6 @@
 		<SelfContained>false</SelfContained>
 		<NoWin32Manifest>true</NoWin32Manifest>
 		<RuntimeFrameworkVersion>9.0.3</RuntimeFrameworkVersion>
-	</PropertyGroup>
-
-	<PropertyGroup>
-		<DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
 	</PropertyGroup>
 	
 	<ItemGroup>

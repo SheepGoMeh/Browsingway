@@ -114,7 +114,10 @@ internal static class Program
 			if (_overlays.TryGetValue(guid, out var overlay))
 			{
 				overlay.Resize(new Size(msg.Width, msg.Height));
-				_ = _rpc.UpdateTexture(guid, overlay.RenderHandler.SharedTextureHandle);
+				_ = _rpc.UpdateTexture(guid, overlay.RenderHandler.SharedTextureHandle,
+					overlay.RenderHandler.LastFrameWidth, overlay.RenderHandler.LastFrameHeight,
+					overlay.RenderHandler.LastDirtyRect.X, overlay.RenderHandler.LastDirtyRect.Y,
+					overlay.RenderHandler.LastDirtyRect.Width, overlay.RenderHandler.LastDirtyRect.Height);
 			}
 		}
 	}
@@ -143,8 +146,9 @@ internal static class Program
 
 			Size size = new(msg.Width, msg.Height);
 
-			var renderHandler = new TextureRenderHandler(size);
 			var guid = new Guid(msg.Guid.Span);
+			string mmfName = $"BrowsingwayCpuFrame_{guid:N}";
+			var renderHandler = new TextureRenderHandler(size, mmfName);
 			if (_overlays.TryGetValue(guid, out Overlay? value))
 			{
 				value.Dispose();
@@ -160,7 +164,23 @@ internal static class Program
 				_ = _rpc.SetCursor(new SetCursorMessage() {Guid = msg.Guid, Cursor = cursor});
 			};
 
-			_ = _rpc.UpdateTexture(guid, renderHandler.SharedTextureHandle);
+			if (renderHandler.SharedTextureHandle != IntPtr.Zero)
+			{
+				_ = _rpc.UpdateTexture(guid, renderHandler.SharedTextureHandle,
+					renderHandler.LastFrameWidth, renderHandler.LastFrameHeight,
+					renderHandler.LastDirtyRect.X, renderHandler.LastDirtyRect.Y,
+					renderHandler.LastDirtyRect.Width, renderHandler.LastDirtyRect.Height);
+			}
+			else
+			{
+				renderHandler.FrameReady += (_, _) =>
+				{
+					_ = _rpc.UpdateTexture(guid, IntPtr.Zero,
+						renderHandler.LastFrameWidth, renderHandler.LastFrameHeight,
+						renderHandler.LastDirtyRect.X, renderHandler.LastDirtyRect.Y,
+						renderHandler.LastDirtyRect.Width, renderHandler.LastDirtyRect.Height);
+				};
+			}
 		}
 	}
 

@@ -22,9 +22,22 @@ public class RendererRpc(string name) : IpcBase(name)
 		await SendCall(new RpcCall() { RendererReady = new RendererReadyMessage() { HasDxSharedTexturesSupport = bHasDxSharedTexturesSupport } });
 	}
 
-	public async Task UpdateTexture(Guid id, IntPtr textureHandle)
+	public async Task UpdateTexture(Guid id, IntPtr textureHandle, int width, int height, int dirtyX, int dirtyY, int dirtyWidth, int dirtyHeight)
 	{
-		await SendCall(new RpcCall() { UpdateTexture = new UpdateTextureMessage() { Guid = id.ToByteArray(), TextureHandle = (ulong)textureHandle } });
+		await SendCall(new RpcCall()
+		{
+			UpdateTexture = new UpdateTextureMessage()
+			{
+				Guid = id.ToByteArray(),
+				TextureHandle = (ulong)textureHandle,
+				Width = width,
+				Height = height,
+				DirtyX = dirtyX,
+				DirtyY = dirtyY,
+				DirtyWidth = dirtyWidth,
+				DirtyHeight = dirtyHeight
+			}
+		});
 	}
 
 	public async Task SetCursor(SetCursorMessage msg)

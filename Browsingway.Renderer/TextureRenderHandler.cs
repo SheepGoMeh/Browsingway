@@ -6,6 +6,7 @@ using CefSharp.Structs;
 using TerraFX.Interop.DirectX;
 using TerraFX.Interop.Windows;
 using System.Collections.Concurrent;
+using System.IO.MemoryMappedFiles;
 using Range = CefSharp.Structs.Range;
 using Size = System.Drawing.Size;
 
@@ -39,10 +40,31 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 	private IntPtr _sharedTextureHandle = IntPtr.Zero;
 	private ID3D11Texture2D* _viewTexture;
 
-	public TextureRenderHandler(Size size)
+	private MemoryMappedFile? _cpuFrameMmf;
+	private long _cpuFrameSlotSize;
+	private string? _cpuFrameMmfName;
+	private MemoryMappedFile? _cpuFrameIdxMmf;
+	private int _cpuWriteSlot;
+
+	private int _lastFrameWidth;
+	private int _lastFrameHeight;
+	private Rect _lastDirtyRect;
+	private bool _firstFrameWritten;
+
+	public int LastFrameWidth => _lastFrameWidth;
+	public int LastFrameHeight => _lastFrameHeight;
+	public Rect LastDirtyRect => _lastDirtyRect;
+
+	public event EventHandler? FrameReady;
+
+	public TextureRenderHandler(Size size, string mmfName)
 	{
 		_sharedTexture = BuildViewTexture(size, true);
 		_viewTexture = BuildViewTexture(size, false);
+		_cpuFrameMmfName = mmfName;
+		_lastFrameWidth = size.Width;
+		_lastFrameHeight = size.Height;
+		EnsureMmfSize(size.Width, size.Height);
 	}
 
 	public IntPtr SharedTextureHandle
@@ -82,6 +104,9 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 		{
 			((ID3D11Texture2D*)texturePtr)->Release();
 		}
+
+		_cpuFrameMmf?.Dispose();
+		_cpuFrameIdxMmf?.Dispose();
 	}
 
 	public Rect GetViewRect()
@@ -201,6 +226,20 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 			context->Flush();
 			context->Release();
 
+			// Write composite frame to CPU shared memory for fallback transport
+			if (type == PaintElementType.View)
+			{
+				_lastFrameWidth = width;
+				_lastFrameHeight = height;
+				_lastDirtyRect = dirtyRect;
+				WriteCpuFrame(width, height);
+				if (!_firstFrameWritten)
+				{
+					_firstFrameWritten = true;
+					FrameReady?.Invoke(this, EventArgs.Empty);
+				}
+			}
+
 			// Rendering is complete, clean up any obsolete textures
 			ConcurrentBag<IntPtr> textures = _obsoleteTextures;
 			_obsoleteTextures = new ConcurrentBag<IntPtr>();
@@ -295,7 +334,50 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 			// Need to clear the cached handle value
 			// TODO: Maybe I should just avoid the lazy cache and do it eagerly on _sharedTexture build.
 			_sharedTextureHandle = IntPtr.Zero;
+
+			_lastFrameWidth = size.Width;
+			_lastFrameHeight = size.Height;
+			EnsureMmfSize(size.Width, size.Height);
 		}
+	}
+
+	private void EnsureMmfSize(int width, int height)
+	{
+		long slotSize = (long)width * height * _bytesPerPixel;
+		if (_cpuFrameMmf == null || _cpuFrameSlotSize < slotSize)
+		{
+			_cpuFrameMmf?.Dispose();
+			_cpuFrameIdxMmf?.Dispose();
+			_cpuFrameSlotSize = slotSize;
+			// Two slots back-to-back in one MMF
+			_cpuFrameMmf = MemoryMappedFile.CreateOrOpen(_cpuFrameMmfName!, slotSize * 2, MemoryMappedFileAccess.ReadWrite);
+			_cpuFrameIdxMmf = MemoryMappedFile.CreateOrOpen(_cpuFrameMmfName! + "_idx", 4, MemoryMappedFileAccess.ReadWrite);
+			_cpuWriteSlot = 0;
+		}
+	}
+
+	private void WriteCpuFrame(int width, int height)
+	{
+		if (_cpuFrameMmf == null || _cpuFrameIdxMmf == null || _alphaLookupBuffer.Length == 0)
+		{
+			return;
+		}
+
+		int slotSize = width * height * _bytesPerPixel;
+		long slotOffset = (long)_cpuWriteSlot * _cpuFrameSlotSize;
+
+		using (MemoryMappedViewStream stream = _cpuFrameMmf.CreateViewStream(slotOffset, slotSize, MemoryMappedFileAccess.Write))
+		{
+			stream.Write(_alphaLookupBuffer, 0, Math.Min(slotSize, _alphaLookupBuffer.Length));
+		}
+
+		// Publish the completed slot index for the consumer
+		using (MemoryMappedViewAccessor idx = _cpuFrameIdxMmf.CreateViewAccessor(0, 4, MemoryMappedFileAccess.Write))
+		{
+			idx.Write(0, _cpuWriteSlot);
+		}
+
+		_cpuWriteSlot = 1 - _cpuWriteSlot;
 	}
 
 	protected byte GetAlphaAt(int x, int y)

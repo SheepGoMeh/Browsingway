@@ -115,7 +115,7 @@ public class Plugin : IDalamudPlugin
 				Guid guid = new(msg.Guid.Span);
 				if (_overlays.TryGetValue(guid, out Overlay? overlay))
 				{
-					overlay.SetTexture((IntPtr)msg.TextureHandle);
+					overlay.SetTexture((IntPtr)msg.TextureHandle, guid, msg.Width, msg.Height, msg.DirtyX, msg.DirtyY, msg.DirtyWidth, msg.DirtyHeight);
 				}
 				else
 				{

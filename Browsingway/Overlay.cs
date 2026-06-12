@@ -214,15 +214,23 @@ internal class Overlay : IDisposable
 		return flags;
 	}
 
-	public void SetTexture(IntPtr handle)
+	public void SetTexture(IntPtr handle, Guid overlayGuid, int width, int height, int dirtyX, int dirtyY, int dirtyWidth, int dirtyHeight)
 	{
 		_resizing = false;
 		_hasRenderError = false;
 
+		// CPU fallback: reuse existing handler and just update the dirty rect,
+		// since the texture and MMF are long-lived and Render() re-uploads each frame.
+		if (handle == IntPtr.Zero && _textureHandler != null)
+		{
+			_textureHandler.UpdateDirtyRect(dirtyX, dirtyY, dirtyWidth, dirtyHeight);
+			return;
+		}
+
 		SharedTextureHandler? oldTextureHandler = _textureHandler;
 		try
 		{
-			_textureHandler = new SharedTextureHandler(handle);
+			_textureHandler = new SharedTextureHandler(handle, overlayGuid, width, height, dirtyX, dirtyY, dirtyWidth, dirtyHeight);
 		}
 		catch (Exception e) { _textureRenderException = e; }
 

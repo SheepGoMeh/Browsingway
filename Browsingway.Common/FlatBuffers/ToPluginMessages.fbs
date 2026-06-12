@@ -11,6 +11,12 @@ table RendererReadyMessage (fs_serializer) {
 table UpdateTextureMessage (fs_serializer) {
     Guid : [ubyte] (required);
     TextureHandle : ulong;
+    Width : int;
+    Height : int;
+    DirtyX : int;
+    DirtyY : int;
+    DirtyWidth : int;
+    DirtyHeight : int;
 }
 
 table SetCursorMessage (fs_serializer) {
